@@ -1,0 +1,495 @@
+#define _CRT_SECURE_NO_WARNINGS 1
+#pragma warning(default: 4996)//新版本 VC++ 默认会将 C4996 归类为 Error，导致无法编译。
+#include<graphics.h>
+#include<windows.h>
+#include<stdio.h>
+#include "time.h"
+#include "math.h"
+#include<conio.h>
+#include <stdlib.h>
+
+
+int flage = 0;
+int num = -1;//-1表示白子，1表示黑子下棋，
+int piece[15][15];
+IMAGE bgp;//定义图片
+
+
+
+int Menu()//设置开始菜单
+{
+	int x;
+	printf("1、人人对战\n");
+	printf("2、人机对战\n");
+	printf("3、游戏介绍\n");
+	printf("4、退出游戏\n");
+	scanf("%d", &x);
+	return x;
+}
+
+void putbackground()//选取图片尺寸480像素
+{
+	//putimage(x, y, l, w, &image, xx, yy)
+	//	x, y 窗口的坐标
+	//	l, w输出的图像的长和宽
+	//	&image   图片
+	//	xx, yy 图片中起始坐标
+
+	putimage(0, 0, 240, 240, &bgp, 60, 60);
+	putimage(240, 0, 240, 240, &bgp, 60, 60);
+	putimage(0, 240, 240, 240, &bgp, 60, 60);
+	putimage(240, 240, 240, 240, &bgp, 60, 60);
+	//
+}
+
+void draw_line()//画棋盘
+{
+	setlinecolor(BLACK);
+	for (int x = 15; x < 480; x += 30)
+		line(x, 15, x, 465);//横向线
+	for (int y = 15; y < 480; y += 30)
+		line(15, y, 465, y);//纵向线
+
+}
+
+
+void draw_point()//画五个中心点
+{
+	setfillcolor(BLACK);//设置填充颜色
+	fillcircle(4 * 30 - 15, 4 * 30 - 15, 3);//x,y 圆心坐标 ，r半径
+	fillcircle(4 * 30 - 15, 12 * 30 - 15, 3);
+	fillcircle(8 * 30 - 15, 8 * 30 - 15, 3);
+	fillcircle(12 * 30 - 15, 4 * 30 - 15, 3);
+	fillcircle(12 * 30 - 15, 12 * 30 - 15, 3);
+
+}
+void initpiece()
+{
+	for (int i = 0; i < 15; i++)
+	for (int j = 0; j < 15; j++)
+		piece[i][j] = 0;
+}
+
+int change_piece(int x, int y)
+{
+	if (piece[x][y] != 0)
+	{
+		return 0;
+	}
+	else
+		piece[x][y] = num;
+	return 1;
+}
+void draw_piece(int m, int n) //画棋子函数
+{
+	if (num == -1)
+		setfillcolor(WHITE);
+	else if (num == 1)
+		setfillcolor(BLACK);
+	int x, y;
+	x = m / 30;
+	y = n / 30;
+	if (change_piece(x, y) == 0)//防止将已有的棋子改掉
+		return;
+	fillcircle(m - (m % 30) + 15, n - (n % 30) + 15, 13);
+	num *= -1;
+
+}
+void draw_piece_P(int m, int n) //玩家画棋子函数
+{
+
+	setfillcolor(WHITE);
+	int x, y;
+	x = m / 30;
+	y = n / 30;
+	if (change_piece(x, y) == 0)
+		return;
+	fillcircle(m - (m % 30) + 15, n - (n % 30) + 15, 13);
+    piece[x][y] = -1;
+}
+
+
+//int piece[15][15] = { { 0 }, { 0 } };//记录棋盘情况,0无，-1为白棋/玩家，1为黑棋/电脑 
+int direct[2];//方向
+int Value1[15][15] = { { 0 }, { 0 } };//计算权值 
+int Value2[15][15] = { { 0 }, { 0 } };//计算权值
+
+
+void machine_attack()//电脑进攻权值 
+{
+	int i1, j1;
+	int k1, k2, k;
+	for (int i = 0; i < 15; i += 1)
+	{
+		for (int j = 0; j <15; j += 1)
+		{
+			if (piece[i][j])
+				Value1[i][j] = 0;
+			if (piece[i][j] == 0)
+			{
+				k1 = k2 = 0;
+				for (i1 = i, j1 = j - 1; j1 >= 1; j1 -= 1)//往左数寻找电脑棋子数
+				{
+					if (piece[i1][j1] == 1)//-1表示白，1表示黑
+						k1++;
+					else
+						break;
+				}
+				for (i1 = i, j1 = j + 1; j1 <= 15; j1 += 1)//往右数寻找电脑棋子数
+				{
+					if (piece[i1][j1] == 1)
+						k2++;
+					else
+						break;
+				}
+				k = k1>k2 ? k1 : k2;
+				k1 = k2 = 0;
+				for (i1 = i - 1, j1 = j; i1 >= 1; i1 -= 1)//往上数寻找电脑棋子数
+				{
+					if (piece[i1][j1] == 1)
+						k1++;
+					else
+						break;
+				}
+				for (i1 = i + 1, j1 = j; i1 <= 15; i1 += 1)//往下数寻找电脑棋子数
+				{
+					if (piece[i1][j1] == 1)
+						k2++;
+					else
+						break;
+				}
+				k1 = k1>k2 ? k1 : k2;
+				k = k>k1 ? k : k1;
+				k1 = k2 = 0;
+				for (i1 = i - 1, j1 = j - 1; i1 >= 1 && j1 >= 1; i1 -= 1, j1 -= 1)//往左上数寻找电脑棋子数
+				{
+					if (piece[i1][j1] == 1)
+						k1++;
+					else
+						break;
+				}
+				for (i1 = i + 1, j1 = j + 1; i1 <= 15 && j1 <= 15; i1 += 1, j1 += 1)//往右下数寻找电脑棋子数
+				{
+					if (piece[i1][j1] == 1)
+						k2++;
+					else
+						break;
+				}
+				k1 = k1>k2 ? k1 : k2;
+				k = k>k1 ? k : k1;
+				k1 = k2 = 0;
+				for (i1 = i + 1, j1 = j - 1; i1 <= 15 && j1 >= 1; i1 += 1, j1 -= 1)//往左下数寻找电脑棋子数
+				{
+					if (piece[i1][j1] == 1)
+						k1++;
+					else
+						break;
+				}
+				for (i1 = i - 1, j1 = j + 1; i1 >= 1 && j1 <= 15; i1 -= 1, j1 += 1)//往右上数寻找电脑棋子数
+				{
+					if (piece[i1][j1] == 1)
+						k2++;
+					else
+						break;
+				}
+				k1 = k1>k2 ? k1 : k2;
+				k = k>k1 ? k : k1;
+				switch (k)
+				{
+				case 3:
+					Value1[i][j] = 15; break;
+				case 4:
+					Value1[i][j] = 25; break;
+				default:
+					Value1[i][j] = 3 + 2 * k; break;
+				}
+			}
+		}
+	}
+}
+
+void machine_defend()//防守权值
+{
+	int i1, j1;
+	int k1, k2, k;
+	for (int i = 1; i <= 15; i += 1)
+	{
+		for (int j = 1; j <= 15; j += 1)
+		{
+			if (piece[i][j])
+				Value2[i][j] = 0;
+			if (piece[i][j] == 0)
+			{
+				k1 = k2 = 0;
+				for (i1 = i, j1 = j - 1; j1 >= 1; j1 -= 1)//往左数寻找玩家棋子数
+				{
+					if (piece[i1][j1] == -1)//1代表黑棋
+						k1++;
+					else
+						break;
+				}
+				for (i1 = i, j1 = j + 1; j1 <= 15; j1 += 1)//往右数寻找玩家棋子数
+				{
+					if (piece[i1][j1] == -1)
+						k2++;
+					else
+						break;
+				}
+				k = k1>k2 ? k1 : k2;
+				k1 = k2 = 0;
+				for (i1 = i - 1, j1 = j; i1 >= 1; i1 -= 1)//往上数寻找玩家棋子数
+				{
+					if (piece[i1][j1] == -1)
+						k1++;
+					else
+						break;
+				}
+				for (i1 = i + 1, j1 = j; i1 <= 15; i1 += 1)//往下数寻找玩家棋子数
+				{
+					if (piece[i1][j1] == -1)
+						k2++;
+					else
+						break;
+				}
+				k1 = k1>k2 ? k1 : k2;
+				k = k>k1 ? k : k1;
+				k1 = k2 = 0;
+				for (i1 = i - 1, j1 = j - 1; i1 >= 1 && j1 >= 1; i1 -= 1, j1 -= 1)//往左上数寻找玩家棋子数
+				{
+					if (piece[i1][j1] == -1)
+						k1++;
+					else
+						break;
+				}
+				for (i1 = i + 1, j1 = j + 1; i1 <= 15 && j1 <= 15; i1 += 1, j1 += 1)//往右下数寻找玩家棋子数
+				{
+					if (piece[i1][j1] == -1)
+						k2++;
+					else
+						break;
+				}
+				k1 = k1>k2 ? k1 : k2;
+				k = k>k1 ? k : k1;
+				k1 = k2 = 0;
+				for (i1 = i + 1, j1 = j - 1; i1 <= 15 && j1 >= 1; i1 += 1, j1 -= 1)//往左下数寻找玩家棋子数
+				{
+					if (piece[i1][j1] == -1)
+						k1++;
+					else
+						break;
+				}
+				for (i1 = i - 1, j1 = j + 1; i1 >= 1 && j1 <= 15; i1 -= 1, j1 += 1)//往右上数寻找玩家棋子数
+				{
+					if (piece[i1][j1] == -1)
+						k2++;
+					else
+						break;
+				}
+				k1 = k1>k2 ? k1 : k2;
+				k = k>k1 ? k : k1;
+				switch (k)
+				{
+				case 3:
+					Value2[i][j] = 10; break;
+				case 4:
+					Value2[i][j] = 20; break;
+				default:
+					Value2[i][j] = 2 + k * 2;
+				}
+			}
+		}
+	}
+}
+
+void find_position()//找到最有价值的位置
+{
+	int k1 = 0, k2 = 0;
+	int i, j, max = 0;
+	for (i = 1; i <= 15; i += 1)
+	for (j = 1; j <= 15; j += 1)
+	{
+		if (max <= Value1[i][j])
+		{
+			max = Value1[i][j];
+			k1 = i;
+			k2 = j;
+		}
+	}
+	for (i = 1; i <= 15; i += 1)
+	for (j = 1; j <= 15; j += 1)
+	{
+		if (max <= Value2[i][j])
+		{
+			max = Value2[i][j];
+			k1 = i;
+			k2 = j;
+		}
+	}
+	direct[1] = k1; 
+	direct[0] = k2;
+
+}
+
+
+void draw_piece_C(int m, int n) //电脑画棋子函数
+
+{
+	setfillcolor(BLACK);
+	//int x, y;//下棋位置
+	/*x = m / 30;
+	y = n / 30;*/
+	if (change_piece(m, n) == 0)
+		return;
+	fillcircle(15+(m*30), 15+(n*30), 13);
+	piece[m][n] = 1;
+}
+
+
+int check_five_piece(int x, int y)
+{
+
+	if (piece[x][y] == piece[x - 1][y] && piece[x][y] == piece[x - 2][y] && piece[x][y] == piece[x + 1][y] && piece[x][y] == piece[x + 2][y])
+		return 1;
+	if (piece[x][y] == piece[x][y - 1] && piece[x][y] == piece[x][y - 2] && piece[x][y] == piece[x][y + 1] && piece[x][y] == piece[x][y + 2])
+		return 1;
+	if (piece[x][y] == piece[x - 1][y - 1] && piece[x][y] == piece[x - 2][y - 2] && piece[x][y] == piece[x + 1][y + 1] && piece[x][y] == piece[x + 2][y + 2])
+		return 1;
+	if (piece[x][y] == piece[x - 1][y+1] && piece[x][y] == piece[x - 2][y+2] && piece[x][y] == piece[x + 1][y-1] && piece[x][y] == piece[x + 2][y-2])
+		return 1;
+	return 0;
+}
+
+int check_over()
+{
+	for (int i = 0; i < 15; i++)
+	for (int j = 0; j < 15; j++)
+	{
+		if (piece[i][j] == 0)
+			continue;
+		else
+		if (check_five_piece(i, j) == 1)
+			return 1;
+	}
+}
+
+void P_Pgame()
+{
+	while (1){
+		initgraph(480, 480);//x:窗口的横向距离（像素点）
+		//棋子大小半径大小13 正方形边长30  每个棋子间距4 
+		loadimage(&bgp, _T("qipan.jpg"));//加载图片
+
+		settextcolor(RED);
+		settextstyle(50, 20, _T("隶书"));
+		setbkmode(TRANSPARENT);
+		putbackground();//显示图片
+		draw_line();
+		draw_point();//画中心点
+		MOUSEMSG m;  //获取鼠标信息
+		initpiece();//棋盘初始化
+		while (1)
+		{
+			m = GetMouseMsg();//获取鼠标信息
+			if (m.uMsg == WM_LBUTTONDOWN)//如果左键按下
+			{
+				draw_piece(m.x, m.y);
+			}
+			if (check_over() == 1)
+			{
+				outtextxy(180, 200, _T("游戏结束"));
+				system("pause");
+			}
+		}
+	}
+}
+
+
+
+void P_Cgame()
+{
+
+	while (1){
+		initgraph(480, 480);//x:窗口的横向距离（像素点）
+		//棋子大小半径大小13 正方形边长30  每个棋子间距4 
+		loadimage(&bgp, _T("qipan.jpg"));//加载图片
+
+		settextcolor(RED);
+		settextstyle(50, 20, _T("隶书"));
+		setbkmode(TRANSPARENT);
+		putbackground();//显示图片
+		draw_line();
+		draw_point();//画中心点
+		MOUSEMSG m;  //获取鼠标信息
+		initpiece();
+
+		while (1)
+		{
+
+			m = GetMouseMsg();//获取鼠标信息
+			if (m.uMsg == WM_LBUTTONDOWN)//如果左键按下
+			{
+				draw_piece_P(m.x, m.y);
+				Sleep(500);
+				machine_defend();
+				machine_attack();
+				find_position();
+				draw_piece_C(direct[1], direct[0]);
+			}
+			if (check_over() == 1)
+			{
+				outtextxy(180, 200, _T("游戏结束"));
+				
+				int message1 = MessageBox(NULL, "游戏结束！是否继续游戏？", "友情提示", MB_OKCANCEL);
+				if (IDCANCEL == message1)
+					system("pause");
+				if (IDOK == message1)
+				{
+					system("cls");
+					
+					break;
+				}
+
+			}
+		}
+
+	}
+}
+
+
+int main()
+{
+
+	system("title 简易五子棋");//设置标题
+	system("mode con cols=58 lines=29");//设置窗口大小
+	system("color 0E");//设置颜色
+loop:
+	switch (Menu())
+	{
+	case 1: P_Pgame(); break;
+	case 2: P_Cgame(); break;
+	case 3:
+		int x;
+		system("cls");
+		printf("黑白两种棋，如其中一种棋五子连成线，则胜利（了解输入1，不了解再多看会。）");
+		scanf("%d", &x);
+		if (x == 1)
+		{
+			system("cls");
+			goto loop;
+		}
+	case 4:
+		int message = MessageBox(NULL, "是否退出？", "友情提示", MB_OKCANCEL);
+		if (IDCANCEL == message)
+		{
+			system("cls");
+			goto loop;
+		}
+		if (IDOK == message)
+		{
+			break;
+		}
+	}
+	return 0;
+
+}
+
